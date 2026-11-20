@@ -21,7 +21,15 @@
     .tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px;min-width:650px}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:#7a8581;font-weight:650}
     .bottom{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;gap:0;padding:9px 8px calc(9px + env(safe-area-inset-bottom));z-index:4}.bottom button{background:none;color:#8b9491;min-width:90px;padding:5px 12px;font-size:11px}.bottom button b{display:block;font-size:20px;margin-bottom:2px}.bottom button.active{color:#168b68}
     .hidden{display:none!important}.modalback{position:fixed;inset:0;background:#0008;z-index:10;display:flex;align-items:center;justify-content:center;padding:16px}.modal{background:white;border-radius:20px;padding:22px;width:min(100%,520px);max-height:90vh;overflow:auto}.modal h2{margin-top:0}.toast{position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:20;background:#101715;color:white;padding:12px 18px;border-radius:999px;box-shadow:var(--shadow);max-width:90%;font-size:13px}
-    @media(max-width:700px){.grid{grid-template-columns:1fr}.wrap{padding:15px 13px 95px}.hero{padding:18px}.hero h1{font-size:22px}.top{padding:16px}.formbox{margin:4vh 13px;padding:21px}.account-id{font-size:21px}}
+    .chart-cta{display:block;width:100%;margin:0 0 18px;padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,#0d2a22,#145c45);color:#fff;font-size:20px;font-weight:800;text-align:center;letter-spacing:.3px;box-shadow:0 10px 28px rgba(20,90,70,.25);border:1px solid #1a6b52;transition:transform .15s,box-shadow .15s}
+    .chart-cta:hover{transform:translateY(-1px);box-shadow:0 12px 32px rgba(20,90,70,.32)}
+    .chart-cta small{display:block;font-size:12px;font-weight:500;opacity:.85;margin-top:4px}
+    .chart-page{background:#0b0e11;border-radius:16px;overflow:hidden;border:1px solid #1a2220}
+    .chart-page .tv-full{width:100%;height:calc(100vh - 280px);min-height:420px}
+    .chart-page .chart-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#111815;border-bottom:1px solid #1e2a26}
+    .chart-page .chart-head h2{margin:0;font-size:18px;color:#fff}
+    .chart-page .chart-head span{font-size:12px;color:#8aa39a}
+    @media(max-width:700px){.grid{grid-template-columns:1fr}.wrap{padding:15px 13px 95px}.hero{padding:18px}.hero h1{font-size:22px}.top{padding:16px}.formbox{margin:4vh 13px;padding:21px}.account-id{font-size:21px}.chart-cta{font-size:18px;padding:16px}.chart-page .tv-full{height:calc(100vh - 260px);min-height:360px}}
   </style>
 </head>
 <body>
@@ -79,11 +87,14 @@ function renderApp(){
   const owner=appData.owner;
   $('#app').innerHTML=`<header class="top"><div><div class="brand">VERSA <span>VIRTUAL BROKER</span></div><small>${owner?'Owner Console':'Member Dashboard'}</small></div><button class="btn light small" id="logout">Keluar</button></header>
   <main class="wrap"><section class="hero"><div><h1>${owner?'Panel Owner':'Halo, '+esc(currentUser.name)+'!'}</h1><p>${owner?'Kelola permintaan akun, deposit, dan member.':'Kelola akun trading dan pantau permintaan Anda.'}</p></div><div class="hero-mark">↗</div></section>
-  <nav class="tabs" id="tabs">${(owner?[['home','Ringkasan'],['requests','Permintaan akun'],['deposits','Deposit'],['withdrawals','Antrian withdraw'],['members','Member'],['ownerAccounts','Akun']]:[['home','Accounts'],['requests','Permintaan'],['deposits','Deposit'],['withdraw','Withdraw'],['history','Riwayat']]).map(([id,label])=>`<button class="tab ${activeTab===id?'active':''}" data-tab="${id}">${label}</button>`).join('')}</nav>
+  <nav class="tabs" id="tabs">${(owner?[['home','Ringkasan'],['requests','Permintaan akun'],['deposits','Deposit'],['withdrawals','Antrian withdraw'],['members','Member'],['ownerAccounts','Akun']]:[['home','Accounts'],['requests','Permintaan'],['deposits','Deposit'],['withdraw','Withdraw'],['history','Riwayat'],['chart','Chart XAUUSD']]).map(([id,label])=>`<button class="tab ${activeTab===id?'active':''}" data-tab="${id}">${label}</button>`).join('')}</nav>
+  ${owner||activeTab==='chart'?'':`<button class="chart-cta" id="openChartBtn">Lihat Chart<small>XAUUSD · TradingView</small></button>`}
   <div id="content"></div></main>
   <nav class="bottom"><button class="${activeTab==='home'?'active':''}" data-tab="home"><b>⌂</b>Home</button><button class="${activeTab==='deposits'?'active':''}" data-tab="deposits"><b>▤</b>Funds</button><button class="${activeTab==='requests'?'active':''}" data-tab="requests"><b>◉</b>Accounts</button><button data-tab="members"><b>☷</b>${owner?'Members':'Profile'}</button></nav>`;
   $('#logout').onclick=async()=>{await call('logout',token);token='';sessionStorage.removeItem('vvb_token');renderAuth()};
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab;renderApp()});
+  const chartBtn=$('#openChartBtn');
+  if(chartBtn) chartBtn.onclick=()=>{activeTab='chart';renderApp()};
   renderContent();
 }
 function renderContent(){
@@ -100,6 +111,7 @@ function renderContent(){
   else if(activeTab==='withdrawals' && owner){c.innerHTML=ownerWithdrawals()}
  else if(activeTab==='withdraw'){c.innerHTML=owner?'<div class="empty">Withdraw tersedia di akun member.</div>':memberWithdrawals()}
  else if(activeTab==='history'){c.innerHTML=memberHistory()}
+ else if(activeTab==='chart'){c.innerHTML=memberChart(); setTimeout(loadTradingViewChart, 50)}
  else if(activeTab==='members'){c.innerHTML=owner?ownerMembers():'<div class="card"><h3>Profil member</h3><p>'+esc(currentUser.name)+'</p><p class="muted">'+esc(currentUser.email)+'</p></div>'}
  else if(activeTab==='ownerAccounts' && owner){c.innerHTML=ownerAccounts()}
  bindOwnerActions();
@@ -117,6 +129,42 @@ function ownerMembers(){return `<h2 class="section-title">Daftar member</h2><div
 function ownerAccounts(){const rows=appData.accounts;return `<h2 class="section-title">Daftar akun</h2>${rows.length?`<div class="card tablewrap"><table><tr><th>Login ID</th><th>Member ID</th><th>Nama akun</th><th>Status</th><th>Aksi</th></tr>${rows.map(a=>`<tr><td>${esc(a.loginId)}</td><td>${esc(a.userId||'')}</td><td>${esc(a.displayName)}</td><td>${status(a.status)}</td><td>${a.status==='deleted'?'—':`<button class="btn danger small" data-delete-account="${esc(a.accountId)}">Hapus</button>`}</td></tr>`).join('')}</table></div>`:'<div class="empty">Belum ada akun.</div>'}`}
 function status(s){let cls='gray',label=s;if(s==='pending'){cls='waiting';label='Waiting'}if(s==='approved'||s==='active'){cls='success';label=s==='active'?'Aktif':'Sukses'}if(s==='rejected'){cls='red';label='Ditolak'}return `<span class="pill ${cls}">${esc(label)}</span>`}
 function modal(html){const b=document.createElement('div');b.className='modalback';b.innerHTML=`<div class="modal">${html}</div>`;b.onclick=e=>{if(e.target===b)b.remove()};document.body.appendChild(b);return b}
+function memberChart(){
+  return `<div class="chart-page"><div class="chart-head"><h2>XAUUSD Chart</h2><span>TradingView · Live</span></div><div class="tv-full" id="tv_chart_container"></div></div>`;
+}
+function loadTradingViewChart(){
+  const container=document.getElementById('tv_chart_container');
+  if(!container) return;
+  const loadWidget=()=>{
+    if(typeof TradingView==='undefined'){toast('Gagal memuat chart. Coba lagi.');return}
+    container.innerHTML='';
+    new TradingView.widget({
+      autosize:true,
+      symbol:'OANDA:XAUUSD',
+      interval:'15',
+      timezone:'Asia/Jakarta',
+      theme:'dark',
+      style:'1',
+      locale:'id',
+      toolbar_bg:'#f1f3f6',
+      enable_publishing:false,
+      hide_side_toolbar:false,
+      allow_symbol_change:true,
+      container_id:'tv_chart_container'
+    });
+  };
+  if(typeof TradingView!=='undefined'){loadWidget();return}
+  if(document.querySelector('script[src*="tradingview.com/tv.js"]')){
+    const check=setInterval(()=>{if(typeof TradingView!=='undefined'){clearInterval(check);loadWidget()}},200);
+    setTimeout(()=>clearInterval(check),8000);
+    return;
+  }
+  const s=document.createElement('script');
+  s.src='https://s3.tradingview.com/tv.js';
+  s.onload=loadWidget;
+  s.onerror=()=>toast('Tidak bisa memuat TradingView.');
+  document.head.appendChild(s);
+}
 function openAccountModal(){const m=modal(`<h2>Buka akun trading</h2><p class="muted">Isi formulir di bawah ini untuk membuka akun trading</p><form id="accountForm"><div class="field"><label>Nama akun</label><input name="displayName" required placeholder="Nama yang tampil"></div><div class="field"><label>Jenis akun</label><select name="accountType"><option>Standard</option><option>Cent</option></select></div><div class="field"><label>Password trading awal</label><input name="tradingPassword" type="password" minlength="8" required placeholder="Minimal 8 karakter"></div><button class="btn green" style="width:100%">Kirim persetujuan</button></form>`);m.querySelector('form').onsubmit=async e=>{e.preventDefault();try{const r=await call('submitAccountRequest',token,Object.fromEntries(new FormData(e.target)));m.remove();toast(r.message);await loadData()}catch(err){showError(err)}}}
 function showCredentials(id){const a=appData.accounts.find(x=>x.accountId===id);if(!a)return;modal(`<h2>Login akun trading</h2><div class="notice warn">Jaga kerahasiaan kredensial. Jangan bagikan kepada siapa pun.</div><div class="field"><label>Login ID</label><input readonly value="${esc(a.loginId)}"></div><div class="field"><label>Password</label><input readonly value="${esc(a.tradingPassword)}"></div><div class="field"><label>Server</label><input readonly value="${esc(a.server)}"></div><button class="btn green" style="width:100%" onclick="this.closest('.modalback').remove()">Tutup</button>`)}
 function openDepositModal(accountId){const m=modal(`<h2>Deposit akun</h2><div class="field"><label>Metode pembayaran</label><select id="payMethod"><option>DANA</option><option>SeaBank</option></select></div><div id="payInfo" class="notice">DANA · Transfer ke <b>087895212815</b></div><div class="field"><label>Nominal deposit (IDR)</label><input id="payAmount" type="number" min="10000" step="1000" placeholder="Contoh: 100000" required></div><div class="field"><label>Referensi transfer / nama pengirim</label><input id="payRef" placeholder="Nama pengirim dan waktu transfer" required></div><p class="hint">Setelah transfer, kirim konfirmasi. Ai akan memproses otomatis transaksi anda dan akan dimasukkan ke dompet anda.</p><button class="btn green" id="sendDeposit" style="width:100%">Konfirmasi pembayaran</button>`);const method=m.querySelector('#payMethod'),info=m.querySelector('#payInfo');method.onchange=()=>info.innerHTML=method.value==='DANA'?'DANA · Transfer ke <b>085745845575</b>':'SeaBank · Transfer ke <b>901793633133</b>';m.querySelector('#sendDeposit').onclick=async()=>{try{const r=await call('submitDeposit',token,{accountId,method:method.value,amount:m.querySelector('#payAmount').value,paymentReference:m.querySelector('#payRef').value});m.remove();toast(r.message);await loadData()}catch(e){showError(e)}}}
